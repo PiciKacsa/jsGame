@@ -6,3 +6,11 @@ canvas{
     background-color: #d3d3d3;
     border: 1px solid black;
 }
+
+p{
+    text-align: left;
+    font-size: 12pt;
+    width: 40%;
+    background-color: lightgray;
+    border: 1px dashed black;
+}
