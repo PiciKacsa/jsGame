@@ -6,15 +6,19 @@ const colors = ['','#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911e
 const menuHeight = 100
 gameState = 1                   //1 = main menu, 2 = ingame
 difficulty = 1                  //1 = easy, 2 = medium, 3 = hard
-drag = false                    //are we currently drawing a line?
-savedgames = [[], [], []]
-field = []                      //current map(== gameFields[difficulty-1])
+isDrawing = false               //are we currently drawing a line?
+savedGames = [[], [], []]
+field = []                      //current map(== gameFields[difficulty-1]), but we use this a lot, so 
 currentLine = []
 finishedLines = []
-canvas.addEventListener('contextmenu', event => event.preventDefault())     //we redefine rightclick inside the canvas
+canvas.addEventListener('contextmenu', event => event.preventDefault())     //we redefine right click behaviour inside the canvas
 
-//Draw the initial state: the main menu
-drawMainMenu()
+//Initialization
+if (localStorage){                  //check if browser supports localStorage
+    tmp = localStorage.getItem('savedGames')                        //fetch saved game data
+    savedGames = tmp != null ? JSON.parse(tmp) :  [[], [], []]      //if we found saves, load them, otherwise start with empty saves
+}
+drawMainMenu()                      //show the main menu
 
 //SECTION 1: Functions responsible for events, game mechanics are found here
 //SECTION 1.1: Event listeners and their functions
@@ -23,18 +27,18 @@ canvas.addEventListener('click', (e) => {
         case(1):    //clicking in the main menu
             onMainMenuClick(e.offsetX,e.offsetY)
             break
-        case(2):    //processing ingame menubar clicks, other ingame mouse events are handled separately in ingameMouseDown, ingameMouseMove, ingameMouseUp
+        case(2):    //processing ingame menubar clicks, other ingame mouse events are handled separately in ingameMouseDown, ingameMouseMove and ingameMouseUp
         {
             if (e.offsetY < 75 && e.offsetY > 25) //menubar click
             {
                 if (e.offsetX > 25 && e.offsetX < 100)  //main menu button
                 {
-                    gameState = 1;
+                    gameState = 1
                     canvas.removeEventListener('mousedown',ingameMouseDown)
                     canvas.removeEventListener('mouseup',ingameMouseUp)
-                    canvas.removeEventListener('mousemove',ingameMouseMove)
+                    canvas.removeEventListener('mousemove',ingameMouseMove)     //inside the main menu we won't need these.
                     finishedLines = []
-                    drawMainMenu();
+                    drawMainMenu()
                 }
                 else if (e.offsetX > 150 && e.offsetX < 225)    //reset button
                 {
@@ -43,22 +47,24 @@ canvas.addEventListener('click', (e) => {
                 }
                 else if (e.offsetX > 275 && e.offsetX < 350)    //save button
                 {
-                    if (savedgames[difficulty - 1] != 0)
+                    if (savedGames[difficulty - 1] != 0)        //there is already a save
                     {
-                        let userMessage = confirm("Biztos felul akarod irni a legutobbi mentest?")
-                        if (userMessage)
+                        let userMessage = confirm("Are you sure you want to overwrite your last save?")
+                        if (userMessage)        //Positive answer
                         {
-                            savedgames[difficulty - 1] = finishedLines.slice()    //slice is needed so we copy by value
+                            savedGames[difficulty - 1] = finishedLines.slice()              //slice is needed so we copy by value
+                            localStorage.setItem('savedGames',JSON.stringify(savedGames))   //save to local storage
                         }
                     }
-                    else
+                    else    //no save found for this difficulty
                     {
-                        savedgames[difficulty - 1] = finishedLines.slice()    //slice is needed so we copy by value
+                        savedGames[difficulty - 1] = finishedLines.slice()              //slice is needed so we copy by value
+                        localStorage.setItem('savedGames',JSON.stringify(savedGames))   //save to local storage
                     }
                 }
                 else if (e.offsetX > 400 && e.offsetX < 475)    //load button
                 {
-                    finishedLines = savedgames[difficulty - 1].slice()
+                    finishedLines = savedGames[difficulty - 1].slice()
                     renderGame()
                 }
             }
@@ -67,16 +73,16 @@ canvas.addEventListener('click', (e) => {
  })
 
  function ingameMouseDown(e){
-    cell = [Math.floor(e.offsetX / cellSize),Math.floor((e.offsetY - menuHeight) / cellSize)]
+    cell = [Math.floor(e.offsetX / cellSize),Math.floor((e.offsetY - menuHeight) / cellSize)]   //clicked cell's indexes
     if (e.button === 0)                             //left click
     {
         if (!isInAnyLine(cell))
         {
-            drag = field[cell[0]] [cell[1]] > 0     //does the starting cell have a value
-            currentLine = drag ? [cell] : []        //if yes, we can start drawing a line
+            isDrawing = field[cell[0]] [cell[1]] > 0     //does the starting cell have a value
+            currentLine = isDrawing ? [cell] : []        //if yes, we can start drawing a line
         }
     }
-    else
+    else        //not left click
     {
         if (e.button === 2)                         //right click, used to delete lines
         {
@@ -87,9 +93,9 @@ canvas.addEventListener('click', (e) => {
                 {
                     ++j
                 }
-                if (j < finishedLines[i].length)    //if we leave the cycle early (we find a point in a line that has the same coords) => we should delete this line
+                if (j < finishedLines[i].length)    //if we leave the cycle early => the point is in the last checked line => delete it
                 {
-                    finishedLines.splice(i,1);
+                    finishedLines.splice(i,1)
                 }
             }
             renderGame()    //update, so we aren't showing the deleted lines anymore
@@ -98,11 +104,15 @@ canvas.addEventListener('click', (e) => {
 }
 
 function ingameMouseMove(e){
-    if (drag)
+    if (isDrawing)
     {
-        currentCell = [Math.floor(e.offsetX / cellSize), Math.floor((e.offsetY - menuHeight) / cellSize)]
+        currentCell = [Math.floor(e.offsetX / cellSize), Math.floor((e.offsetY - menuHeight) / cellSize)]   //current cell indexes
+        
+        // TODO: CHECK WHY field[currentCell[0]][currentCell[1]] !== 0
+        //If it is already in a line, or (it's value isn't 0, and it's value isn't the current line's starting value)
         if (isInAnyLine(currentCell) || (field[currentCell[0]][currentCell[1]] !== 0 && field[currentCell[0]][currentCell[1]] !== field[currentLine[0][0]][currentLine[0][1]]))
         {
+            //check for backward move
             lastlastCell = currentLine.length > 1 ? [currentLine[currentLine.length - 2][0], currentLine[currentLine.length - 2][1]] : [-1,-1]
             if (currentCell[0] === lastlastCell[0] && currentCell[1] === lastlastCell[1])
             {
@@ -110,7 +120,7 @@ function ingameMouseMove(e){
                 renderGame()
             }
         }
-        else
+        else    //not in a line and 
         {
             lastCell = [currentLine[currentLine.length - 1][0], currentLine[currentLine.length - 1][1]]
             if ((currentCell[0] !== lastCell[0] || currentCell[1] !== lastCell[1]) && isNeighbour(currentCell, lastCell))
@@ -124,9 +134,9 @@ function ingameMouseMove(e){
  }
 
 function ingameMouseUp(e){
-    if (drag)
+    if (isDrawing)
     {
-        drag = false
+        isDrawing = false
         endCell = [Math.floor(e.offsetX / cellSize), Math.floor((e.offsetY - menuHeight) / cellSize)]
         if (field[endCell[0]][endCell[1]] === field[currentLine[0][0]][currentLine[0][1]] && !(endCell[0] === currentLine[0][0] && endCell[1] === currentLine[0][1]) && isNeighbour(endCell,currentLine[currentLine.length-1]))
         {
@@ -135,7 +145,7 @@ function ingameMouseUp(e){
         
     }
     currentLine = []    //already processed, empty it
-    renderGame();       //update the game: show the finished line(no visual change), or make the invalid line disappear
+    renderGame()        //update the game: show the finished line(no visual change), or make the invalid line disappear
     let sum = 0         //used for victory check
     for (let i = 0; i < finishedLines.length; ++i)
     {
@@ -159,7 +169,7 @@ function onMainMenuClick(x,y)   //handling main menu click behaviour
             canvas.addEventListener('mousedown', ingameMouseDown)
             canvas.addEventListener('mouseup', ingameMouseUp)
             canvas.addEventListener('mousemove', ingameMouseMove)
-            finishedLines = savedgames[newDifficulty - 1].slice()
+            finishedLines = savedGames[newDifficulty - 1].slice()
             drawGameStart()
         }
     }
@@ -239,7 +249,7 @@ function renderGame(){
         drawLineTo([0,menuHeight + i * cellSize], [600, menuHeight + i*cellSize])
         drawLineTo([i*cellSize, menuHeight], [i*cellSize, 700])
     }
-    drawFinishedLines();              //drawing the finished lines
+    drawFinishedLines()               //drawing the finished lines
     if (currentLine != 0)             //select line color for current line(if it exists), depending on the starting cell's value
     {
         ctx.strokeStyle = colors[field[currentLine[0][0]] [currentLine[0][1]]]
