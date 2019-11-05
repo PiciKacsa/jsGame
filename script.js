@@ -1,3 +1,4 @@
+//Author : Magony Róbert Miklós, CTJE64
 //SECTION 0: Constants and variables that will be used all around the game.
 const canvas = document.querySelector('canvas')
 const ctx = canvas.getContext('2d')
@@ -107,27 +108,29 @@ function ingameMouseMove(e){
     if (isDrawing)
     {
         currentCell = [Math.floor(e.offsetX / cellSize), Math.floor((e.offsetY - menuHeight) / cellSize)]   //current cell indexes
-        
-        // TODO: CHECK WHY field[currentCell[0]][currentCell[1]] !== 0
-        //If it is already in a line, or (it's value isn't 0, and it's value isn't the current line's starting value)
-        if (isInAnyLine(currentCell) || (field[currentCell[0]][currentCell[1]] !== 0 && field[currentCell[0]][currentCell[1]] !== field[currentLine[0][0]][currentLine[0][1]]))
+
+        if (currentCell[0] > -1 && currentCell[0] < dimension && currentCell[1] > -1 && currentCell[1] < dimension)
         {
-            //check for backward move
-            lastlastCell = currentLine.length > 1 ? [currentLine[currentLine.length - 2][0], currentLine[currentLine.length - 2][1]] : [-1,-1]
-            if (currentCell[0] === lastlastCell[0] && currentCell[1] === lastlastCell[1])
+            //If it is already in a line, or (isn't empty and it's value isn't the current line's starting value)
+            if (isInAnyLine(currentCell) || (field[currentCell[0]][currentCell[1]] !== 0 && field[currentCell[0]][currentCell[1]] !== field[currentLine[0][0]][currentLine[0][1]]))
             {
-                currentLine.pop()
-                renderGame()
+                //check for backward move
+                lastlastCell = currentLine.length > 1 ? [currentLine[currentLine.length - 2][0], currentLine[currentLine.length - 2][1]] : [-1,-1]
+                if (currentCell[0] === lastlastCell[0] && currentCell[1] === lastlastCell[1])
+                {
+                    currentLine.pop()
+                    renderGame()
+                }
             }
-        }
-        else    //not in a line and 
-        {
-            lastCell = [currentLine[currentLine.length - 1][0], currentLine[currentLine.length - 1][1]]
-            if ((currentCell[0] !== lastCell[0] || currentCell[1] !== lastCell[1]) && isNeighbour(currentCell, lastCell))
+            else    //not in a line and (empty cell or ending cell)
             {
-                currentLine.push([currentCell[0], currentCell[1]])
-                ctx.strokeStyle = colors[field[currentLine[0][0]] [currentLine[0][1]]]
-                drawLineTo([(lastCell[0] + 0.5)*cellSize, (lastCell[1] + 0.5)*cellSize + menuHeight], [(currentCell[0] + 0.5) * cellSize, (currentCell[1] + 0.5) * cellSize + menuHeight])
+                lastCell = [currentLine[currentLine.length - 1][0], currentLine[currentLine.length - 1][1]]
+                if ((currentCell[0] !== lastCell[0] || currentCell[1] !== lastCell[1]) && isNeighbour(currentCell, lastCell))
+                {
+                    currentLine.push([currentCell[0], currentCell[1]])
+                    ctx.strokeStyle = colors[field[currentLine[0][0]] [currentLine[0][1]]]
+                    drawLineTo([(lastCell[0] + 0.5)*cellSize, (lastCell[1] + 0.5)*cellSize + menuHeight], [(currentCell[0] + 0.5) * cellSize, (currentCell[1] + 0.5) * cellSize + menuHeight])
+                }
             }
         }
     }
@@ -216,7 +219,7 @@ function drawMainMenu()
     ctx.fillRect(354, 475, 112, 50)     //hard
     ctx.fillStyle = 'white'
     ctx.font = '64px verdana'           //writing text from now on
-    //there was also a play button in the middle, but according to the assignment's wording we should start upon difficulty selection, so it's removed and now the ui looks a bit weird
+    //there was also a play button in the middle, but according to the assignment's wording we should start immediately upon difficulty selection, so it's removed and now the UI looks a bit weird
     ctx.fillText('Flow', 185, 125)
     ctx.font = '32px verdana'
     ctx.fillText('Difficulty', 185, 435)
